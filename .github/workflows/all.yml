@@ -7,15 +7,33 @@ on:
   pull_request:
 
 jobs:
-    # As of this writing, Ubuntu’s emscripten doesn’t accommodate
-    # the Node.js bug described in
-    # https://github.com/emscripten-core/emscripten/issues/16913.
-    #
-    # So no Linux for now.
-    mac:
-        runs-on: macOS-latest
-        steps:
-        - run: node --version
-        - uses: actions/checkout@main
-        - run: brew install emscripten autoconf automake libtool
-        - run: make test
+    test:
+      runs-on: ubuntu-latest
+      steps:
+      - run: sudo apt-get install autoconf automake libtool
+      - uses: actions/checkout@v4
+        with:
+          path: 'emsdk'
+          repository: emscripten-core/emsdk
+          ref: '3.1.64'
+      - name: Install Emscripten
+        working-directory: emsdk
+        run: |
+          ./emsdk install 3.1.64
+          ./emsdk activate 3.1.64
+          source ./emsdk_env.sh
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "EMSDK=$EMSDK" >> $GITHUB_ENV
+          echo "EMSDK_NODE=$EMSDK_NODE" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          path: 'jq-web'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache-dependency-path: jq-web/package-lock.json
+      - name: Test jq-web
+        working-directory: jq-web
+        run: |
+          npm ci
+          make test
