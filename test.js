@@ -42,6 +42,10 @@ tape('detect memory leaks', async function(t) {
 });
 */
 
+/**
+ * @param {import('tape').Test} t
+ * @param {import('.')} jq
+ */
 async function doJQTests(t, jq) {
   t.plan(9);
 
