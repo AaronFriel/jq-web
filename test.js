@@ -2,10 +2,14 @@
 
 const tape = require('tape');
 
-const jqPromise = require('./jq.js');
+const jq = require('./');
 
 tape('jq behavior', async function(t) {
-  doJQTests(t, await jqPromise);
+  doJQTests(t, jq);
+});
+
+tape('jq behavior', async function(t) {
+  doJQTests(t, jq.promised);
 });
 
 /*
@@ -38,17 +42,21 @@ tape('detect memory leaks', async function(t) {
 });
 */
 
-function doJQTests(t, jq) {
-  t.plan(8);
+async function doJQTests(t, jq) {
+  t.plan(9);
 
-  t.deepEqual(
-    Object.keys(jq).sort(),
-    ["json", "raw"],
-    "expected API",
+  t.ok(
+    'json' in jq && typeof jq.json === 'function',
+    "json() is a function",
+  );
+
+  t.ok(
+    'raw' in jq && typeof jq.raw === 'function',
+    "raw() is a function",
   );
 
   t.deepEquals(
-      jq.json(
+      await jq.json(
       {a: 'a letter', b: 'other letter', '%': null},
       '[.a, .["%"]] | {res: .}'
       ),
@@ -56,34 +64,36 @@ function doJQTests(t, jq) {
   );
 
   t.equals(
-      jq.raw('["a", {"12": "üñìçôdẽ"}]', '.[1]["12"] | {"what?": .}'),
+      await jq.raw('["a", {"12": "üñìçôdẽ"}]', '.[1]["12"] | {"what?": .}'),
       `{\n  "what?": "üñìçôdẽ"\n}`
   );
 
   t.equals(
-      jq.json({message: 'This is an emoji test 🙏'}, '.message'),
+      await jq.json({message: 'This is an emoji test 🙏'}, '.message'),
       'This is an emoji test 🙏'
   );
 
-  t.throws(
-    () => { jq.raw('invalid JSON', '.') },
-    null,
+  // get the exception, not the error
+  const result = await jq.raw('invalid JSON', '.').then(result => null).catch(e => e);
+
+  t.ok(
+    result instanceof Error,
     "Invalid JSON triggers an exception.",
   );
 
   t.equals(
-    jq.raw('123', '.'),
+    await jq.raw('123', '.'),
     '123',
     "raw() works after invalid JSON.",
   );
 
   t.deepEqual(
-    jq.json([123], '.'),
+    await jq.json([123], '.'),
     [123],
   );
 
   t.equals(
-    jq.raw(Number.MAX_SAFE_INTEGER + "000", '.'),
+    await jq.raw(Number.MAX_SAFE_INTEGER + "000", '.'),
     Number.MAX_SAFE_INTEGER + "000",
     'Number that exceeds MAX_SAFE_INTEGER round-trips.',
   );
